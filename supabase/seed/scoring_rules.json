@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "batting": {
+    "run": 1,
+    "four_bonus": 1,
+    "six_bonus": 2,
+    "thirty_bonus": 4,
+    "half_century": 8,
+    "century": 16,
+    "duck": -2,
+    "duck_applies_to": ["BAT", "WK", "AR"],
+    "strike_rate_brackets": [
+      { "min": 170, "max": null, "points": 6 },
+      { "min": 150, "max": 169.99, "points": 4 },
+      { "min": 130, "max": 149.99, "points": 2 },
+      { "min": 60, "max": 70, "points": -2 },
+      { "min": 0, "max": 59.99, "points": -4 }
+    ],
+    "min_balls_for_sr_bonus": 10
+  },
+  "bowling": {
+    "wicket": 25,
+    "bonus_3w": 4,
+    "bonus_4w": 8,
+    "bonus_5w": 16,
+    "maiden": 12,
+    "lbw_bowled_bonus": 8,
+    "economy_brackets": [
+      { "min": 0, "max": 5, "points": 6 },
+      { "min": 5, "max": 6, "points": 4 },
+      { "min": 6, "max": 7, "points": 2 },
+      { "min": 10, "max": 11, "points": -2 },
+      { "min": 11, "max": 12, "points": -4 },
+      { "min": 12, "max": null, "points": -6 }
+    ],
+    "min_overs_for_econ_bonus": 2
+  },
+  "fielding": {
+    "catch": 8,
+    "stumping": 12,
+    "run_out_direct": 12,
+    "run_out_indirect": 6,
+    "three_catch_bonus": 4
+  },
+  "other": {
+    "playing_xi": 4,
+    "captain_multiplier": 2,
+    "vice_captain_multiplier": 1.5
+  },
+  "season": {
+    "match_rank_1": 3,
+    "match_rank_2": 2,
+    "match_rank_other": -1
+  }
+}

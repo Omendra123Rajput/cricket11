@@ -1,0 +1,104 @@
+# CLAUDE.md
+
+## Workflow Orchestration
+
+### 1. Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Self-Improvement Loop
+- After ANY correction from the user: update tasks/lessons.md with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
+
+## Workflow
+
+### 4. Verification Before Done
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes - don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fixing
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests -- then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to tasks/todo.md with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to tasks/todo.md
+6. **Capture Lessons**: Update tasks/lessons.md after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Only touch what's necessary. No side effects with new bugs.
+
+---
+
+## Project Context
+
+### Tech Stack
+- Next.js 15 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Framer Motion
+- Supabase (PostgreSQL + Auth + Realtime) — free tier
+- CricAPI free tier for live cricket data + Cricbuzz scraper fallback
+- Client-side polling (30s) for live score sync — no server cron needed
+- Vercel free tier deployment
+
+### Architecture Decisions
+- **Single Supabase backend**: Auth + DB + Realtime in one service
+- **Client-side polling**: Browser polls `/api/cricket/sync-scores` every 30s during live matches (zero cost vs server cron)
+- **Configurable scoring**: Contest scoring rules stored as JSONB, default rules in `supabase/seed/scoring_rules.json`
+- **RLS everywhere**: Row Level Security on all 13 tables; service role only for cron/admin writes
+- **Season points**: +3 (1st) / +2 (2nd) / -1 (rest) per match contest
+
+### Key Paths
+- `supabase/migrations/` — 12 SQL migration files (tables, RLS, functions)
+- `supabase/seed/` — players.sql (200 players), matches.sql (78 matches), badges.sql, scoring_rules.json
+- `src/types/database.ts` — All TypeScript types matching schema
+- `src/lib/supabase/` — client, server, admin, middleware helpers
+- `src/lib/utils/constants.ts` — IPL teams, roles, constraints, season points
+- `tasks/todo.md` — Progress tracker
+- `tasks/lessons.md` — Self-improvement log
+
+### Build & Run
+```bash
+npm run dev          # Start dev server (turbopack)
+npm run build        # Production build
+npm run lint         # ESLint
+npm run test         # Run vitest (28 tests)
+npm run test:watch   # Vitest watch mode
+```
+
+### Phase Status
+- Phase 1: Foundation ✅ (scaffold, auth, landing, dashboard, nav)
+- Phase 2: Data Layer ✅ (schema, migrations, RLS, seed data, types)
+- Phase 3: Contest System ✅ (create, join, invite links, detail page, leaderboard)
+- Phase 4: Team Builder ✅ (Dream11-style UI, role tabs, credit bar, captain/VC, validation, save)
+- Phase 5: Cricket API ✅ (CricAPI adapter, cache, sync-scores route, polling hook)
+- Phase 6: Scoring + Leaderboard ✅ (scoring engine, post-match processing, leaderboard ranking)
+- Phase 7: Realtime + Live Experience ✅ (realtime leaderboard hook, countdown timer, live scorecard, leaderboard table with rank animations, points breakdown modal, match leaderboard page)
+- Phase 8: Gamification ✅ (badge evaluation engine, badge-card/badge-grid components, streak tracking, auto-award on match processing, profile page with live badges)
+- Phase 9: Analytics + UI Polish ✅ (skeleton loaders, page transitions, error boundaries, analytics page with bar chart, OG metadata)
+- Phase 10: Hardening ✅ (28 vitest tests for scoring engine + team validator, CRON_SECRET on API routes, .env.example updated)
