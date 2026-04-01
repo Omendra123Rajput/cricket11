@@ -69,6 +69,7 @@
 ### Architecture Decisions
 - **Single Supabase backend**: Auth + DB + Realtime in one service
 - **DB-as-cache for live scores**: `sync-scores` checks `matches.last_synced_at` — if < 5 min, returns DB data without API call. Saves API hits (100/day limit), works across all Vercel instances (no cold-start loss)
+- **Scorecard costs 10 hits per call** (`hitsUsed: 10`), currentMatches costs 1 hit. Budget: ~10 scorecard calls/day max
 - **Fixture sync required on first run**: Call `GET /api/cricket/sync-fixtures` (with CRON_SECRET) to populate `matches.external_id` from real CricAPI UUIDs. Without this, sync-scores skips all matches.
 - **IPL 2026 series_id**: `87c62aac-bc3c-4738-ab93-19da0690488f` (hardcoded constant, doesn't change mid-season)
 - **Configurable scoring**: Contest scoring rules stored as JSONB, default rules in `supabase/seed/scoring_rules.json`

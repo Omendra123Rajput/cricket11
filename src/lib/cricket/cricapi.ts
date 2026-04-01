@@ -119,13 +119,14 @@ export function normalizeScorecardData(
       playerStatsMap.set(name, existing);
     }
 
-    // Fielding stats
+    // Fielding stats — API uses "catcher"/"catch"/"stumped"/"runout" (not "fielder"/"catches" etc.)
     for (const field of innings.catching || []) {
-      const name = field.fielder.name;
+      const name = (field.catcher ?? field.fielder)?.name;
+      if (!name) continue;
       const existing = playerStatsMap.get(name) || createEmptyStats(name);
-      existing.catches = (existing.catches || 0) + (field.catches || 0);
-      existing.stumpings = (existing.stumpings || 0) + (field.stumpings || 0);
-      existing.runOuts = (existing.runOuts || 0) + (field.runouts || 0);
+      existing.catches = (existing.catches || 0) + (field.catch ?? field.catches ?? 0);
+      existing.stumpings = (existing.stumpings || 0) + (field.stumped ?? field.stumpings ?? 0);
+      existing.runOuts = (existing.runOuts || 0) + (field.runout ?? field.runouts ?? 0);
       existing.inPlayingXI = true;
       playerStatsMap.set(name, existing);
     }

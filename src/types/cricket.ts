@@ -77,10 +77,14 @@ export interface CricAPIBowler {
 }
 
 export interface CricAPICatcher {
-  fielder: CricAPIPlayerRef;
-  catches: number;
-  stumpings?: number;
-  runouts?: number;
+  catcher?: CricAPIPlayerRef;
+  fielder?: CricAPIPlayerRef; // legacy fallback
+  catch?: number;
+  catches?: number; // legacy fallback
+  stumped?: number;
+  stumpings?: number; // legacy fallback
+  runout?: number;
+  runouts?: number; // legacy fallback
 }
 
 export interface CricAPIPlayerRef {
