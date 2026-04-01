@@ -60,15 +60,17 @@
 ## Project Context
 
 ### Tech Stack
-- Next.js 15 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Framer Motion
+- Next.js 16 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + Framer Motion
 - Supabase (PostgreSQL + Auth + Realtime) — free tier
-- CricAPI free tier for live cricket data + Cricbuzz scraper fallback
-- Client-side polling (30s) for live score sync — no server cron needed
+- CricAPI (api.cricapi.com/v1) free tier — 100 hits/day limit
+- Client-side polling (30s) hits DB cache; real API called max every 5 min
 - Vercel free tier deployment
 
 ### Architecture Decisions
 - **Single Supabase backend**: Auth + DB + Realtime in one service
-- **Client-side polling**: Browser polls `/api/cricket/sync-scores` every 30s during live matches (zero cost vs server cron)
+- **DB-as-cache for live scores**: `sync-scores` checks `matches.last_synced_at` — if < 5 min, returns DB data without API call. Saves API hits (100/day limit), works across all Vercel instances (no cold-start loss)
+- **Fixture sync required on first run**: Call `GET /api/cricket/sync-fixtures` (with CRON_SECRET) to populate `matches.external_id` from real CricAPI UUIDs. Without this, sync-scores skips all matches.
+- **IPL 2026 series_id**: `87c62aac-bc3c-4738-ab93-19da0690488f` (hardcoded constant, doesn't change mid-season)
 - **Configurable scoring**: Contest scoring rules stored as JSONB, default rules in `supabase/seed/scoring_rules.json`
 - **RLS everywhere**: Row Level Security on all 13 tables; service role only for cron/admin writes
 - **Season points**: +3 (1st) / +2 (2nd) / -1 (rest) per match contest
@@ -78,7 +80,13 @@
 - `supabase/seed/` — players.sql (200 players), matches.sql (78 matches), badges.sql, scoring_rules.json
 - `src/types/database.ts` — All TypeScript types matching schema
 - `src/lib/supabase/` — client, server, admin, middleware helpers
-- `src/lib/utils/constants.ts` — IPL teams, roles, constraints, season points
+- `src/lib/utils/constants.ts` — IPL teams, roles, constraints, season points, IPL_2026_SERIES_ID
+- `src/lib/cricket/cricapi.ts` — CricAPI adapter (getMatches, getScorecard, getSeriesMatches)
+- `src/lib/cricket/api-client.ts` — Unified client with in-memory cache (schedule/stats only)
+- `src/lib/cricket/team-normalizer.ts` — Full team name → DB abbreviation mapping
+- `src/lib/cricket/player-matcher.ts` — Jaro-Winkler fuzzy matching + alias table for player names
+- `src/app/api/cricket/sync-fixtures/` — Maps CricAPI match UUIDs to DB matches (run first!)
+- `src/app/api/cricket/sync-scores/` — Live score sync with DB-level cache (5 min interval)
 - `tasks/todo.md` — Progress tracker
 - `tasks/lessons.md` — Self-improvement log
 
@@ -102,3 +110,9 @@ npm run test:watch   # Vitest watch mode
 - Phase 8: Gamification ✅ (badge evaluation engine, badge-card/badge-grid components, streak tracking, auto-award on match processing, profile page with live badges)
 - Phase 9: Analytics + UI Polish ✅ (skeleton loaders, page transitions, error boundaries, analytics page with bar chart, OG metadata)
 - Phase 10: Hardening ✅ (28 vitest tests for scoring engine + team validator, CRON_SECRET on API routes, .env.example updated)
+- Phase 11: Cricket API Fix ✅ (fixture sync route, DB-as-cache for live scores, Jaro-Winkler player matching)
+
+### First-Run Checklist (new deployment)
+1. Run `GET /api/cricket/sync-fixtures` with `Authorization: Bearer {CRON_SECRET}` to populate `external_id`
+2. Verify response shows `matched >= 4` for IPL 2026 matches
+3. Test `GET /api/cricket/sync-scores?matchId={id}` on a matched match
