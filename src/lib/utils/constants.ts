@@ -43,3 +43,5 @@ export const SEASON_POINTS = {
 } as const;
 
 export const APP_NAME = "CrickContest";
+
+export const IPL_2026_SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f";

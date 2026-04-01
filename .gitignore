@@ -38,3 +38,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local API test snapshots (contain API keys)
+cricscore.json
+currentmatches.json
+
+# supabase temp
+supabase/.temp/

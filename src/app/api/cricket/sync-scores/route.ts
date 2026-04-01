@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchLiveScorecard } from "@/lib/cricket/api-client";
+import { findBestPlayerMatch } from "@/lib/cricket/player-matcher";
 import type { NormalizedPlayerStats } from "@/types/cricket";
+
+// Minimum interval between real API calls — DB acts as shared cache across instances.
+// 5 min × 42 calls per 3.5h match = ~42 hits/match, within the 100/day free tier limit.
+const SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
 // Client-side polling calls this every 30s during live matches.
 // GET /api/cricket/sync-scores?matchId=123
@@ -15,10 +20,10 @@ export async function GET(request: Request) {
 
   const supabase = createAdminClient();
 
-  // Get match with external ID
+  // Get match with external ID, scorecard, and last sync time
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("id, external_id, status")
+    .select("id, external_id, status, scorecard, last_synced_at")
     .eq("id", Number(matchId))
     .single();
 
@@ -40,6 +45,18 @@ export async function GET(request: Request) {
       ok: true,
       synced: false,
       reason: `Match status is ${match.status}, skipping sync`,
+    });
+  }
+
+  // DB-level cache: skip API call if synced recently (shared across all Vercel instances)
+  const lastSynced = match.last_synced_at ? new Date(match.last_synced_at).getTime() : 0;
+  if (Date.now() - lastSynced < SYNC_INTERVAL_MS && match.scorecard) {
+    return NextResponse.json({
+      ok: true,
+      synced: false,
+      cached: true,
+      matchStatus: match.status,
+      scores: (match.scorecard as { scores?: unknown[] })?.scores ?? [],
     });
   }
 
@@ -97,22 +114,16 @@ async function upsertPlayerStats(
 
   if (!dbPlayers) return;
 
-  // Create name -> id mapping (fuzzy: last name match)
-  const nameMap = new Map<string, number>();
-  for (const p of dbPlayers) {
-    nameMap.set(p.name.toLowerCase(), p.id);
-    // Also map by last name for partial matches
-    const lastName = p.name.split(" ").pop()?.toLowerCase();
-    if (lastName) nameMap.set(lastName, p.id);
-  }
-
   for (const stat of playerStats) {
-    // Try exact match first, then last name
-    let playerId =
-      nameMap.get(stat.playerName.toLowerCase()) ||
-      nameMap.get(stat.playerName.split(" ").pop()?.toLowerCase() || "");
-
-    if (!playerId) continue; // Skip unmatched players
+    const match = findBestPlayerMatch(stat.playerName, dbPlayers);
+    if (!match) {
+      console.warn(`[sync-scores] Unmatched player: "${stat.playerName}" — add to PLAYER_ALIASES`);
+      continue;
+    }
+    if (match.confidence === "fuzzy") {
+      console.log(`[sync-scores] Fuzzy match: "${stat.playerName}" → "${match.playerName}" (${match.score.toFixed(3)})`);
+    }
+    const playerId = match.playerId;
 
     const row = {
       match_id: matchId,

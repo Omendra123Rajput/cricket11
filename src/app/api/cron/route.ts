@@ -11,12 +11,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // TODO: Implement schedule refresh, match status checks
-  // Badge evaluation and streaks are handled in process-match endpoint
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  // Sync fixtures: keeps external_ids current as new IPL matches are published
+  const fixtureRes = await fetch(`${baseUrl}/api/cricket/sync-fixtures`, {
+    headers: { authorization: `Bearer ${cronSecret ?? ""}` },
+  });
+  const fixtureData = fixtureRes.ok ? await fixtureRes.json() : { error: "fixture sync failed" };
 
   return NextResponse.json({
     ok: true,
-    tasks: ["schedule_refresh", "cleanup"],
+    tasks: ["fixture_sync"],
+    fixture_sync: fixtureData,
     timestamp: new Date().toISOString(),
   });
 }

@@ -33,8 +33,9 @@ async function fetchCricAPI<T>(endpoint: string, params: Record<string, string> 
 
   const json = await res.json();
 
-  if (json.status === "failure") {
-    throw new Error(`CricAPI: ${json.reason || "Unknown error"}`);
+  if (json.status !== "success") {
+    console.error(`[CricAPI] Failure:`, JSON.stringify({ status: json.status, reason: json.reason, info: json.info }));
+    throw new Error(`CricAPI: ${json.reason || json.status || "Unknown error"}`);
   }
 
   return json.data;
@@ -59,6 +60,12 @@ export async function getMatchInfo(matchId: string): Promise<CricAPIMatch> {
   return fetchCricAPI<CricAPIMatch>("match_info", {
     id: matchId,
   });
+}
+
+// Get all matches in a series (used for fixture sync)
+export async function getSeriesMatches(seriesId: string): Promise<CricAPIMatch[]> {
+  const data = await fetchCricAPI<{ matchList?: CricAPIMatch[] }>("series_info", { id: seriesId });
+  return data.matchList || [];
 }
 
 // Normalize scorecard into our internal format
